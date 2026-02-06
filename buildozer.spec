@@ -7,7 +7,7 @@ package.domain = app.quantflow
 source.dir = .
 source.include_exts = py,png,jpg,jpeg,kv,atlas,onnx,txt
 source.include_patterns = models/*.onnx
-source.exclude_dirs = __pycache__,.git,.venv,venv,build,.buildozer,p4a-recipes
+source.exclude_dirs = __pycache__,.git,.venv,venv,build,.buildozer,p4a-recipes,libs
 
 version = 1.0.0
 
@@ -27,6 +27,8 @@ android.accept_sdk_license = True
 android.arch = arm64-v8a
 
 # Gradle / Java – ONNX Runtime Android AAR (native Java library called via pyjnius)
+# AAR is manually downloaded by download_model.py into libs/
+android.add_aars = libs/onnxruntime-android-1.22.0.aar
 android.gradle_dependencies = com.microsoft.onnxruntime:onnxruntime-android:1.22.0
 android.enable_androidx = True
 
