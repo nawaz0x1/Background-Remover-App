@@ -48,10 +48,18 @@ class RemoveBGApp(MDApp):
     def _preload_model(self):
         """Pre-load the background removal model"""
         try:
-            from bg_remover import get_session
-            get_session()
-        except Exception:
-            pass
+            from bg_remover import get_session, check_model_exists, get_model_path
+            print(f"[BG Remover] Model path: {get_model_path()}")
+            print(f"[BG Remover] Model exists: {check_model_exists()}")
+            if check_model_exists():
+                get_session()
+                print("[BG Remover] Session pre-loaded OK")
+            else:
+                print("[BG Remover] Model not found – skipping preload")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"[BG Remover] Preload failed: {e}")
 
     # ---- Android permission handling ----
 

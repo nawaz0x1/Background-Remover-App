@@ -470,23 +470,38 @@ class MainScreen(MDScreen):
     def _process_in_thread(self):
         """Background thread for image processing"""
         try:
+            # On Android, ensure this thread is attached to the JVM
+            if platform == "android":
+                try:
+                    import jnius
+                except Exception:
+                    pass
+
             from bg_remover import remove_background
-            
+
             # Create temp file for result
             fd, temp_path = tempfile.mkstemp(suffix=".png")
             os.close(fd)
-            
+
+            print(f"[BG Remover] Processing: {self._original_path}")
+
             # Process image and keep PIL result
             result_img = remove_background(self._original_path, temp_path)
-            
+
+            print(f"[BG Remover] Done → {temp_path}")
+
             self._result_path = temp_path
             self._result_image = result_img
-            
+
             # Update UI on main thread
             Clock.schedule_once(lambda dt: self._on_process_complete(True))
-            
+
         except Exception as e:
-            Clock.schedule_once(lambda dt: self._on_process_complete(False, str(e)))
+            import traceback
+            traceback.print_exc()
+            err_msg = str(e)
+            print(f"[BG Remover] ERROR: {err_msg}")
+            Clock.schedule_once(lambda dt: self._on_process_complete(False, err_msg))
     
     def _on_process_complete(self, success, error=None):
         """Called when processing completes"""

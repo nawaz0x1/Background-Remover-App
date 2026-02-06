@@ -4,3 +4,6 @@ onnxruntime
 numpy
 pillow
 plyer
+# Note: onnxruntime above is for DESKTOP development only.
+# On Android, the Java ONNX Runtime AAR is pulled via Gradle
+# (see android.gradle_dependencies in buildozer.spec).
