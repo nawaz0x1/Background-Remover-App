@@ -13,8 +13,7 @@ version = 1.0.0
 
 # Requirements - Android compatible
 # Direct ONNX inference – no rembg/scipy/scikit-image (need gfortran / legacy NDK).
-# numpy version is controlled by p4a-recipes/numpy/ (pinned to 1.26.4 because
-# numpy 2.x has a missing #include <unordered_map> that fails with NDK r25b).
+# numpy 2.x missing #include <unordered_map> is patched by p4a-recipes/numpy/.
 requirements = python3,kivy==2.3.1,kivymd==1.2.0,pillow,plyer,numpy,onnxruntime
 
 # Android configuration
