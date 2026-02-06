@@ -1,6 +1,6 @@
 kivy
 kivymd
-rembg
 onnxruntime
+numpy
 pillow
 plyer
