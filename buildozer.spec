@@ -13,7 +13,9 @@ version = 1.0.0
 
 # Requirements - Android compatible
 # Direct ONNX inference – no rembg/scipy/scikit-image (need gfortran / legacy NDK).
-requirements = python3,kivy==2.3.1,kivymd==1.2.0,pillow,plyer,numpy,onnxruntime
+# numpy pinned to 1.26.4: numpy 2.x has a missing #include <unordered_map> in
+# unique.cpp that fails to compile with NDK r25b's libc++.
+requirements = python3,kivy==2.3.1,kivymd==1.2.0,pillow,plyer,numpy==1.26.4,onnxruntime
 
 # Android configuration
 # Storage: READ/WRITE for <API 33, READ_MEDIA_IMAGES for API 33+
