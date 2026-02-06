@@ -6,10 +6,10 @@ include in unique.cpp).  This recipe overrides p4a's default numpy to
 force v1.26.4 which compiles cleanly.
 """
 
-from pythonforandroid.recipes.numpy import NumPyRecipe
+from pythonforandroid.recipes.numpy import NumpyRecipe
 
 
-class NumPyFixed(NumPyRecipe):
+class NumPyFixed(NumpyRecipe):
     version = "1.26.4"
     url = "https://github.com/numpy/numpy/archive/v{version}.tar.gz"
 
