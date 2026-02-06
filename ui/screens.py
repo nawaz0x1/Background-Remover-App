@@ -12,6 +12,7 @@ from kivy.uix.button import Button
 from kivy.graphics.texture import Texture
 from kivy.graphics import Color, Rectangle
 from kivy.uix.widget import Widget
+from kivy.utils import platform
 from kivymd.uix.screen import MDScreen
 from plyer import filechooser
 import threading
@@ -360,6 +361,7 @@ class MainScreen(MDScreen):
         self._original_path = None
         self._result_path = None
         self._result_image = None
+        self._temp_input_path = None  # temp copy of selected image on Android
     
     def select_image(self):
         """Open file chooser to select an image"""
@@ -371,16 +373,87 @@ class MainScreen(MDScreen):
         except Exception as e:
             self.status_text = f"Error: {str(e)}"
     
+    def _resolve_android_uri(self, uri):
+        """
+        On Android, plyer returns a content:// URI which Kivy/PIL cannot
+        read directly. Copy the file to a local temp path via the
+        ContentResolver and return the temp path.
+        """
+        try:
+            from jnius import autoclass
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            context = PythonActivity.mActivity
+            resolver = context.getContentResolver()
+            InputStream = autoclass("java.io.InputStream")
+            Uri = autoclass("android.net.Uri")
+
+            parsed = Uri.parse(uri)
+            stream = resolver.openInputStream(parsed)
+
+            # Determine a reasonable extension from the URI or MIME type
+            ext = ".jpg"
+            mime = resolver.getType(parsed)
+            if mime:
+                if "png" in mime:
+                    ext = ".png"
+                elif "webp" in mime:
+                    ext = ".webp"
+                elif "bmp" in mime:
+                    ext = ".bmp"
+
+            fd, tmp = tempfile.mkstemp(suffix=ext)
+            os.close(fd)
+
+            # Read bytes from InputStream and write to temp file
+            with open(tmp, "wb") as fout:
+                buf = bytearray(8192)
+                while True:
+                    n = stream.read(buf)
+                    if n == -1:
+                        break
+                    fout.write(bytes(buf[:n]))
+            stream.close()
+
+            return tmp
+        except Exception as e:
+            print(f"[BG Remover] _resolve_android_uri failed: {e}")
+            return None
+    
     def _on_file_selected(self, selection):
-        """Handle file selection"""
-        if selection:
-            path = selection[0]
-            self._original_path = path
-            self.image_source = path
-            self.status_text = f"Loaded: {os.path.basename(path)}"
-            self.result_available = False
-            self._result_image = None
-            self.bg_color = [0, 0, 0, 0]
+        """Handle file selection — schedule on main thread for safety."""
+        Clock.schedule_once(lambda dt: self._handle_selection(selection), 0)
+    
+    def _handle_selection(self, selection):
+        """Process the selected file path (main-thread)."""
+        if not selection:
+            return
+
+        path = selection[0]
+
+        # Clean up previous temp input
+        if self._temp_input_path and os.path.exists(self._temp_input_path):
+            try:
+                os.remove(self._temp_input_path)
+            except OSError:
+                pass
+            self._temp_input_path = None
+
+        # On Android, resolve content:// URIs to a local temp file
+        if platform == "android" and str(path).startswith("content://"):
+            self.status_text = "Loading image..."
+            resolved = self._resolve_android_uri(path)
+            if resolved is None:
+                self.status_text = "Error: could not read file"
+                return
+            self._temp_input_path = resolved
+            path = resolved
+
+        self._original_path = path
+        self.image_source = path
+        self.status_text = f"Loaded: {os.path.basename(path)}"
+        self.result_available = False
+        self._result_image = None
+        self.bg_color = [0, 0, 0, 0]
     
     def process_image(self):
         """Process the image to remove background"""
@@ -500,11 +573,23 @@ class MainScreen(MDScreen):
             self._do_save(save_path)
     
     def _save_next_to_original(self):
-        """Save result next to original file"""
-        if self._original_path:
+        """Save result to a known location as fallback."""
+        if platform == "android":
+            # On Android, save to shared Pictures directory
+            try:
+                from android.storage import primary_external_storage_path
+                pictures = os.path.join(primary_external_storage_path(), "Pictures")
+                os.makedirs(pictures, exist_ok=True)
+                base = os.path.splitext(os.path.basename(self._original_path or "image"))[0]
+                save_path = os.path.join(pictures, f"{base}_nobg.png")
+            except Exception:
+                save_path = os.path.join(tempfile.gettempdir(), "result_nobg.png")
+        elif self._original_path:
             base, ext = os.path.splitext(self._original_path)
             save_path = f"{base}_nobg.png"
-            self._do_save(save_path)
+        else:
+            save_path = os.path.join(tempfile.gettempdir(), "result_nobg.png")
+        self._do_save(save_path)
     
     def _do_save(self, save_path):
         """Actually save the file with background color applied"""
